@@ -18,7 +18,20 @@ public class ButtonBehaviour : MonoBehaviour
     
     public void openGame()
     {
+        GameObject.FindGameObjectWithTag("Music").GetComponent<MusicClass>().StopMusic();
         SceneManager.LoadScene("Game");
     }
 
+    public void InstructionsMenu()
+    {
+        SceneManager.LoadScene("Instructions");
+    }
+    public void mainMenu()
+    {
+        SceneManager.LoadScene("Start");
+    }
+    public void exitGame()
+    {
+        Application.Quit();
+    }
 }

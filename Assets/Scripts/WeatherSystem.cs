@@ -7,6 +7,7 @@ public class WeatherSystem : MonoBehaviour
     public float dangerTime;
     public float safeTime;
     public bool rainStart;
+    public Light directionalLight;
     // Start is called before the first frame update
     void Start()
     {
@@ -20,6 +21,7 @@ public class WeatherSystem : MonoBehaviour
     {
         if (!rainStart)
         {
+            directionalLight.color = Color.yellow;
             if (safeTime > 0)
             {
                 safeTime -= Time.deltaTime;
@@ -32,6 +34,7 @@ public class WeatherSystem : MonoBehaviour
         }
         else
         {
+            directionalLight.color = Color.blue;
             if (dangerTime > 0)
             {
                 dangerTime -= Time.deltaTime;

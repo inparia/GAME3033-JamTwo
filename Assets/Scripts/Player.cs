@@ -26,6 +26,7 @@ public class Player : MonoBehaviour
     private float speedX, speedZ;
     private bool underCeiling;
     private Vector3 moveDirection = Vector3.zero;
+    public int rainDamage;
 
     [Header("Mouse Input")]
     private Vector2 mousePos;
@@ -46,6 +47,7 @@ public class Player : MonoBehaviour
 
     [Header("UI")]
     public TMPro.TextMeshProUGUI boxText;
+    public GameObject pausePanel;
 
     [Header("Animator")]
     private Animator animator;
@@ -57,9 +59,13 @@ public class Player : MonoBehaviour
     public Camera camera;
     public CameraStatus cameraStatus;
 
+    [Header("Audios")]
+    public AudioSource itemSound, deadSound;
+
     [Header("Game Status")]
-    public float gameTimer;
+    private float gameTimer;
     public int counter;
+    private bool gamePaused;
     // Start is called before the first frame update
     void Start()
     {
@@ -69,6 +75,7 @@ public class Player : MonoBehaviour
         rotation = Vector2.zero;
         isMouseDown = false;
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
         InvokeRepeating("UpdateTarget", 0f, 0.5f);
         range = 5f;
         counter = 0;
@@ -80,6 +87,7 @@ public class Player : MonoBehaviour
         playerHealth = 100;
         gameTimer = 0;
         cameraStatus = CameraStatus.SetThree;
+        gamePaused = false;
     }
 
     void UpdateTarget()
@@ -107,6 +115,7 @@ public class Player : MonoBehaviour
 
             if (readyToTake)
             {
+                itemSound.Play();
                 Destroy(nearestBox);
                 counter++;
                 ableToTake = false;
@@ -126,72 +135,75 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
 
-        gameTimer += Time.deltaTime;
-
-        playerVelocity.y += gravityValue * Time.deltaTime;
-
-        moveDirection = transform.TransformDirection(new Vector3(walkMovementX * Time.deltaTime * speedX, playerVelocity.y * Time.deltaTime, walkMovementZ * Time.deltaTime * speedZ));
-
-        if (walkMovementX == 0 && walkMovementZ == 0)
+        if (!gamePaused)
         {
-            animator.SetBool("isWalk", false);
-            animator.SetBool("isWalkBackward", false);
-        }
-        myCharacterController.Move(moveDirection);
+            gameTimer += Time.deltaTime;
 
-        groundedPlayer = myCharacterController.isGrounded;
+            playerVelocity.y += gravityValue * Time.deltaTime;
 
-        if (groundedPlayer && playerVelocity.y < 0)
-        {
-            playerVelocity.y = 0f;
-        }
+            moveDirection = transform.TransformDirection(new Vector3(walkMovementX * Time.deltaTime * speedX, playerVelocity.y * Time.deltaTime, walkMovementZ * Time.deltaTime * speedZ));
 
-
-        if (isRotating)
-        {
-            // offset
-            mouseOffset = (mousePos - mouseReference);
-
-            // apply rotation
-            rotation.y = (mouseOffset.x + mouseOffset.y) * sensitivity;
-
-            // rotate
-            transform.Rotate(rotation);
-
-            // store mouse
-            if(!isMouseDown)
-                mouseReference = mousePos;
-        }
-        else
-        {
-            rotation = Vector2.zero;
-        }
-
-        if(weatherSystem.GetComponent<WeatherSystem>().rainStart)
-        {
-            if(!underCeiling)
+            if (walkMovementX == 0 && walkMovementZ == 0)
             {
-                playerHealth -= Time.deltaTime * 1;
+                animator.SetBool("isWalk", false);
+                animator.SetBool("isWalkBackward", false);
             }
-        }
+            myCharacterController.Move(moveDirection);
 
-        if(counter == 7)
-        {
-            SceneManager.LoadScene("Win");
-        }
+            groundedPlayer = myCharacterController.isGrounded;
 
-        if(playerHealth <= 0)
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-            myCharacterController.enabled = false;
-            animator.SetBool("isDead", true);
-            delayScene(3, "Lose");
+            if (groundedPlayer && playerVelocity.y < 0)
+            {
+                playerVelocity.y = 0f;
+            }
+
+
+            if (isRotating)
+            {
+                // offset
+                mouseOffset = (mousePos - mouseReference);
+
+                // apply rotation
+                rotation.y = (mouseOffset.x + mouseOffset.y) * sensitivity;
+
+                // rotate
+                transform.Rotate(rotation);
+
+                // store mouse
+                if (!isMouseDown)
+                    mouseReference = mousePos;
+            }
+            else
+            {
+                rotation = Vector2.zero;
+            }
+
+            if (weatherSystem.GetComponent<WeatherSystem>().rainStart)
+            {
+                if (!underCeiling)
+                {
+                    playerHealth -= Time.deltaTime * rainDamage;
+                }
+            }
+
+            if (counter == 7)
+            {
+                SceneManager.LoadScene("Win");
+            }
+
+            if (playerHealth <= 0)
+            {
+                deadSound.Play();
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                myCharacterController.enabled = false;
+                animator.SetBool("isDead", true);
+                delayScene(3, "Lose");
+            }
+            checkCameraStatus();
+            HealthBar.SetHealthBarValue(playerHealth / 100);
         }
-        checkCameraStatus();
-        HealthBar.SetHealthBarValue(playerHealth / 100);
     }
     public void takeBox()
     {
@@ -225,67 +237,99 @@ public class Player : MonoBehaviour
 
     public void getMousePos(InputAction.CallbackContext context)
     {
-        mousePos = context.ReadValue<Vector2>();
+        if(!gamePaused)
+            mousePos = context.ReadValue<Vector2>();
     }
     public void onMouseDown(InputAction.CallbackContext context)
     {
-        mouseDown = context.ReadValue<float>();
-        if(mouseDown == 1)
+        if (!gamePaused)
         {
-            isRotating = true;
-            mouseReference = Vector2.zero;
-            if (!isMouseDown)
-                mouseReference = mousePos;
-            isMouseDown = true;
-        }
-        else
-        {
-            isMouseDown = false;
-            isRotating = false;
+            mouseDown = context.ReadValue<float>();
+            if (mouseDown == 1)
+            {
+                isRotating = true;
+                mouseReference = Vector2.zero;
+                if (!isMouseDown)
+                    mouseReference = mousePos;
+                isMouseDown = true;
+            }
+            else
+            {
+                isMouseDown = false;
+                isRotating = false;
+            }
         }
     }
 
+    public void pauseGame()
+    {
+        gamePaused = true;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+        Time.timeScale = 0f;
+        pausePanel.SetActive(true);
+    }
+
+    public void resumeGame()
+    {
+        gamePaused = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        Time.timeScale = 1f;
+        pausePanel.SetActive(false);
+    }
+
+    public void toMain()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        gamePaused = false;
+        Cursor.visible = true;
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("Start");
+    }
     public void mouseScroll(InputAction.CallbackContext context)
     {
-        Debug.Log(context.ReadValue<float>());
-        if(context.ReadValue<float>() > 0)
+        if (!gamePaused)
         {
-            switch(cameraStatus)
+            if (context.ReadValue<float>() > 0)
             {
-                case CameraStatus.SetOne:
-                    break;
-                case CameraStatus.SetTwo:
-                    cameraStatus = CameraStatus.SetOne;
-                    break;
-                case CameraStatus.SetThree:
-                    cameraStatus = CameraStatus.SetTwo;
-                    break;
-                case CameraStatus.SetFour:
-                    cameraStatus = CameraStatus.SetThree;
-                    break;
-                case CameraStatus.SetFive:
-                    cameraStatus = CameraStatus.SetFour;
-                    break;
+                switch (cameraStatus)
+                {
+                    case CameraStatus.SetOne:
+                        break;
+                    case CameraStatus.SetTwo:
+                        cameraStatus = CameraStatus.SetOne;
+                        break;
+                    case CameraStatus.SetThree:
+                        cameraStatus = CameraStatus.SetTwo;
+                        break;
+                    case CameraStatus.SetFour:
+                        cameraStatus = CameraStatus.SetThree;
+                        break;
+                    case CameraStatus.SetFive:
+                        cameraStatus = CameraStatus.SetFour;
+                        break;
+                }
             }
-        }
-        else if (context.ReadValue<float>() < 0)
-        {
-            switch (cameraStatus)
+            else if (context.ReadValue<float>() < 0)
             {
-                case CameraStatus.SetOne:
-                    cameraStatus = CameraStatus.SetTwo;
-                    break;
-                case CameraStatus.SetTwo:
-                    cameraStatus = CameraStatus.SetThree;
-                    break;
-                case CameraStatus.SetThree:
-                    cameraStatus = CameraStatus.SetFour;
-                    break;
-                case CameraStatus.SetFour:
-                    cameraStatus = CameraStatus.SetFive;
-                    break;
-                case CameraStatus.SetFive:
-                    break;
+                switch (cameraStatus)
+                {
+                    case CameraStatus.SetOne:
+                        cameraStatus = CameraStatus.SetTwo;
+                        break;
+                    case CameraStatus.SetTwo:
+                        cameraStatus = CameraStatus.SetThree;
+                        break;
+                    case CameraStatus.SetThree:
+                        cameraStatus = CameraStatus.SetFour;
+                        break;
+                    case CameraStatus.SetFour:
+                        cameraStatus = CameraStatus.SetFive;
+                        break;
+                    case CameraStatus.SetFive:
+                        break;
+                }
             }
         }
     }
