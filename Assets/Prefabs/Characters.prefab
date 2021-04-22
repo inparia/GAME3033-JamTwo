@@ -1216,8 +1216,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21f89398f0928c24ebfb8a816aed246d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 10
-  underCeiling: 0
+  boxText: {fileID: 0}
+  weatherSystem: {fileID: 0}
+  camera: {fileID: 1656245396885756956}
+  gameTimer: 0
+  counter: 0
 --- !u!114 &6397323037983228252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1287,6 +1290,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: ac8a04c7-9bb7-47ef-a456-c1a0a4a10afe
     m_ActionName: Player/LeftRight[/Keyboard/a,/Keyboard/d]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 410e648a-27b4-4051-8019-7357e99abddf
+    m_ActionName: Player/MousePos[/Mouse/delta]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: f7599c8f-2c40-4b36-8395-9e9bae3d3bb8
+    m_ActionName: Player/MouseDown[/Mouse/rightButton]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 08b1fe38-6646-4c34-b961-b9f7a33fc465
+    m_ActionName: Player/TakeBox[/Keyboard/f]
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: cb6cf591-c86e-454e-8833-25706a62750a
+    m_ActionName: Player/Scroll[/Mouse/backButton,/Mouse/forwardButton]
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player

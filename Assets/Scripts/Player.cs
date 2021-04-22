@@ -3,39 +3,63 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
+public enum CameraStatus
+{
+    SetOne,
+    SetTwo,
+    SetThree,
+    SetFour,
+    SetFive
+}
 public class Player : MonoBehaviour
 {
     private CharacterController myCharacterController;
 
+    [Header("Player Status")]
+    private float playerHealth;
     private float walkMovementX, walkMovementZ;
-    private Vector2 mousePos;
-    private float mouseDown;
-    private bool isMouseDown;
     private bool groundedPlayer;
     private float gravityValue = -9.81f;
     private Vector3 playerVelocity;
-    private float speed;
-    public bool underCeiling;
+    private float speedX, speedZ;
+    private bool underCeiling;
     private Vector3 moveDirection = Vector3.zero;
 
-
+    [Header("Mouse Input")]
+    private Vector2 mousePos;
+    private float mouseDown;
+    private bool isMouseDown;
     private float sensitivity;
     private Vector2 mouseReference;
     private Vector2 mouseOffset;
     private Vector2 rotation;
     private bool isRotating;
 
+    [Header("Item")]
     private bool ableToTake, readyToTake;
-
     private float range;
     private Transform target;
     private Box targetbox;
     private string boxTag = "Box";
+
+    [Header("UI")]
     public TMPro.TextMeshProUGUI boxText;
+
+    [Header("Animator")]
     private Animator animator;
+    
+    [Header("Weather System")]
+    public GameObject weatherSystem;
+
+    [Header("Camera")]
+    public Camera camera;
+    public CameraStatus cameraStatus;
+
+    [Header("Game Status")]
+    public float gameTimer;
     public int counter;
-    public int playerHealth;
     // Start is called before the first frame update
     void Start()
     {
@@ -51,8 +75,11 @@ public class Player : MonoBehaviour
         ableToTake = false;
         readyToTake = false;
         animator = GetComponent<Animator>();
-        speed = 10;
+        speedX = 5;
+        speedZ = 5;
         playerHealth = 100;
+        gameTimer = 0;
+        cameraStatus = CameraStatus.SetThree;
     }
 
     void UpdateTarget()
@@ -99,9 +126,13 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        
+
+        gameTimer += Time.deltaTime;
+
         playerVelocity.y += gravityValue * Time.deltaTime;
 
-        moveDirection = transform.TransformDirection(new Vector3(walkMovementX * Time.deltaTime * speed, playerVelocity.y * Time.deltaTime, walkMovementZ * Time.deltaTime * speed));
+        moveDirection = transform.TransformDirection(new Vector3(walkMovementX * Time.deltaTime * speedX, playerVelocity.y * Time.deltaTime, walkMovementZ * Time.deltaTime * speedZ));
 
         if (walkMovementX == 0 && walkMovementZ == 0)
         {
@@ -138,6 +169,29 @@ public class Player : MonoBehaviour
             rotation = Vector2.zero;
         }
 
+        if(weatherSystem.GetComponent<WeatherSystem>().rainStart)
+        {
+            if(!underCeiling)
+            {
+                playerHealth -= Time.deltaTime * 1;
+            }
+        }
+
+        if(counter == 7)
+        {
+            SceneManager.LoadScene("Win");
+        }
+
+        if(playerHealth <= 0)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            myCharacterController.enabled = false;
+            animator.SetBool("isDead", true);
+            delayScene(3, "Lose");
+        }
+        checkCameraStatus();
+        HealthBar.SetHealthBarValue(playerHealth / 100);
     }
     public void takeBox()
     {
@@ -151,12 +205,14 @@ public class Player : MonoBehaviour
         walkMovementZ = context.ReadValue<float>();
         if (walkMovementZ > 0)
         {
-            speed = 10;
+            speedZ = 5;
             animator.SetBool("isWalk", true);
+            animator.SetBool("isWalkBackward", false);
         }
         else if(walkMovementZ < 0)
         {
-            speed = 3;
+            speedZ = 3;
+            animator.SetBool("isWalk", false);
             animator.SetBool("isWalkBackward", true);
         }
     }
@@ -170,7 +226,6 @@ public class Player : MonoBehaviour
     public void getMousePos(InputAction.CallbackContext context)
     {
         mousePos = context.ReadValue<Vector2>();
-        Debug.Log(mousePos);
     }
     public void onMouseDown(InputAction.CallbackContext context)
     {
@@ -190,6 +245,50 @@ public class Player : MonoBehaviour
         }
     }
 
+    public void mouseScroll(InputAction.CallbackContext context)
+    {
+        Debug.Log(context.ReadValue<float>());
+        if(context.ReadValue<float>() > 0)
+        {
+            switch(cameraStatus)
+            {
+                case CameraStatus.SetOne:
+                    break;
+                case CameraStatus.SetTwo:
+                    cameraStatus = CameraStatus.SetOne;
+                    break;
+                case CameraStatus.SetThree:
+                    cameraStatus = CameraStatus.SetTwo;
+                    break;
+                case CameraStatus.SetFour:
+                    cameraStatus = CameraStatus.SetThree;
+                    break;
+                case CameraStatus.SetFive:
+                    cameraStatus = CameraStatus.SetFour;
+                    break;
+            }
+        }
+        else if (context.ReadValue<float>() < 0)
+        {
+            switch (cameraStatus)
+            {
+                case CameraStatus.SetOne:
+                    cameraStatus = CameraStatus.SetTwo;
+                    break;
+                case CameraStatus.SetTwo:
+                    cameraStatus = CameraStatus.SetThree;
+                    break;
+                case CameraStatus.SetThree:
+                    cameraStatus = CameraStatus.SetFour;
+                    break;
+                case CameraStatus.SetFour:
+                    cameraStatus = CameraStatus.SetFive;
+                    break;
+                case CameraStatus.SetFive:
+                    break;
+            }
+        }
+    }
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == "Building")
@@ -205,5 +304,35 @@ public class Player : MonoBehaviour
             underCeiling = false;
         }
     }
+    public void delayScene(float delay, string SceneName)
+    {
+        StartCoroutine(LoadLevelAfterDelay(delay, SceneName));
+    }
+    IEnumerator LoadLevelAfterDelay(float delay, string SceneName)
+    {
+        yield return new WaitForSeconds(delay);
+        SceneManager.LoadScene(SceneName);
+    }
 
+    void checkCameraStatus()
+    {
+        switch (cameraStatus)
+        {
+            case CameraStatus.SetOne:
+                camera.transform.localPosition = new Vector3(0, 2, -4);
+                break;
+            case CameraStatus.SetTwo:
+                camera.transform.localPosition = new Vector3(0, 3, -6);
+                break;
+            case CameraStatus.SetThree:
+                camera.transform.localPosition = new Vector3(0, 4, -8);
+                break;
+            case CameraStatus.SetFour:
+                camera.transform.localPosition = new Vector3(0, 5, -10);
+                break;
+            case CameraStatus.SetFive:
+                camera.transform.localPosition = new Vector3(0, 6, -12);
+                break;
+        }
+    }
 }
