@@ -190,6 +190,8 @@ public class Player : MonoBehaviour
             if (counter == 7)
             {
                 SceneManager.LoadScene("Win");
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
             }
 
             if (playerHealth <= 0)
